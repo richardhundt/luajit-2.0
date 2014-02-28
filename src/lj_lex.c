@@ -291,8 +291,25 @@ static int llex(LexState *ls, TValue *tv)
     case '-':
       next(ls);
       if (ls->current != '-') return '-';
-      /* else is a comment */
       next(ls);
+      if (ls->current == '@') {
+        lua_assert(lj_char_isdigit(ls->current));
+        char lnbuf[10];
+        int i = 0;
+        memset(lnbuf, 0, 10);
+        while (!currIsNewline(ls) && ls->current != END_OF_STREAM) {
+          if (i > 10) lj_lex_error(ls, ls->token, LJ_ERR_XLINES);
+          lnbuf[i++] = ls->current;
+          next(ls);
+        }
+        int ln = atoi(lnbuf);
+        if (ln >= LJ_MAX_LINE)
+          lj_lex_error(ls, ls->token, LJ_ERR_XLINES);
+        ls->linenumber = atoi(lnbuf);
+        next(ls);
+        continue;
+      }
+      /* else is a comment */
       if (ls->current == '[') {
 	int sep = skip_sep(ls);
 	lj_str_resetbuf(&ls->sb);  /* `skip_sep' may dirty the buffer */
